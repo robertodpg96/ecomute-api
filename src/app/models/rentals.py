@@ -1,5 +1,6 @@
+from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 class RentalOutcome(BaseModel):
     bike_id: int
@@ -15,17 +16,11 @@ class RentalOutcome(BaseModel):
 
 class RentalProcessing(BaseModel):
     bike_id: int
-    bike_battery: int
-    user_id: int
-
-    @model_validator(mode='after')
-    def rental_check(self):
-        if self.bike_battery < 20:
-            raise ValueError('Bike battery too low for rental.')
-        return self
 
 class RentalResponse(BaseModel):
     id: int
     bike_id: Optional[int] = None
     user_id: Optional[int] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     model_config = ConfigDict(from_attributes=True)

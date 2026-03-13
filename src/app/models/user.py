@@ -10,11 +10,14 @@ class UserCreate(BaseModel):
 class UserResponse(BaseModel):
     id: int
     username: str
+    email: Optional[str] = None
+    role: str
     is_active: bool
     model_config = ConfigDict(from_attributes=True)
 
 
 class UserSignUp(BaseModel):
+    username: str
     email: EmailStr
     password: str
 

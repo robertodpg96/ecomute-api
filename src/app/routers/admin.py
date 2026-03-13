@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException
 
-def verify_admin_key(api_key: str = Header(...)):
-    if api_key != 'eco-admin-secret':
-        raise HTTPException(status_code=403, detail='Invalid key')
+from src.dependencies import get_current_user
 
-router = APIRouter(dependencies=[Depends(verify_admin_key)], prefix='/admin', tags=['admin'])
+router = APIRouter(prefix='/admin', tags=['admin'])
 
 @router.get('/stats')
-def get_admin_stats():
+async def get_admin_stats(current_user=Depends(get_current_user)):
+    if current_user.role != 'admin':
+        raise HTTPException(status_code=403, detail='Not enough permissions')
     return 'Admin Stats'

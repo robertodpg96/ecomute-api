@@ -24,6 +24,7 @@ dist/
 # Logs and databases
 *.log
 *.sqlite3
+*.db
 
 # Byte-compiled / optimized / DLL files
 *.pyc
@@ -34,6 +35,7 @@ dist/
 # Misc
 coverage/
 htmlcov/
+.pytest_cache/
 
 # Claude
 .claude/
