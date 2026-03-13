@@ -1,8 +1,6 @@
 # EcoMute API
 
-A production-style electric bike rental REST API built incrementally across 5 labs as part of the **Advanced Programming with Python** course at IE University (MCSBT, FEB-2026).
-
-Each lab introduces a new layer of the stack — from data validation to persistence, security, and automated testing.
+A production-style electric bike rental REST API built incrementally across 5 phases, each introducing a new layer of the stack — from data validation to persistence, security, and automated testing.
 
 ---
 
@@ -11,7 +9,7 @@ Each lab introduces a new layer of the stack — from data validation to persist
 - [Project Overview](#project-overview)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
-- [Lab Progression](#lab-progression)
+- [Development Phases](#development-phases)
 - [Setup & Installation](#setup--installation)
 - [Running the API](#running-the-api)
 - [API Endpoints](#api-endpoints)
@@ -84,9 +82,9 @@ lab7/
 
 ---
 
-## Lab Progression
+## Development Phases
 
-### Lab 3 — Pydantic Power & Data Integrity *(Sessions 5 & 6)*
+### Phase 1 — Pydantic Power & Data Integrity
 
 **Goal:** Stop garbage data from entering the system.
 
@@ -100,7 +98,7 @@ lab7/
 
 ---
 
-### Lab 4 — Dependency Injection & Architecture *(Sessions 7 & 8)*
+### Phase 2 — Dependency Injection & Architecture
 
 **Goal:** Decouple business logic from API logic using FastAPI's `Depends` system.
 
@@ -108,11 +106,11 @@ lab7/
 - Introduced provider functions (`get_bike_datasource`, `get_users_datasource`) as DI factories
 - Refactored routers to receive data sources via injection instead of hardcoded access
 - Created the `PricingService` class (`calculate_cost(minutes)`) to separate pricing logic
-- Added the `/admin` router with **router-level dependency scoping** (API key protection on the entire router)
+- Added the `/admin` router with **router-level dependency scoping**
 
 ---
 
-### Lab 5 — Persistence with SQLAlchemy & Async IO *(Sessions 9 & 10)*
+### Phase 3 — Persistence with SQLAlchemy & Async IO
 
 **Goal:** Replace volatile in-memory mocks with a real persistent database.
 
@@ -130,7 +128,7 @@ lab7/
 
 ---
 
-### Lab 6 — Ironclad Security: Auth & JWT *(Sessions 11 & 12)*
+### Phase 4 — Ironclad Security: Auth & JWT
 
 **Goal:** Transition from an open system to a secure, token-based system.
 
@@ -150,7 +148,7 @@ lab7/
 
 ---
 
-### Lab 7 — Automated Testing with Pytest *(Sessions 13 & 14)*
+### Phase 5 — Automated Testing with Pytest
 
 **Goal:** Build a safety net. Replace manual Swagger UI testing with automated scripts.
 
@@ -289,8 +287,3 @@ pytest test/app/services/test_api.py
 | Only `admin` users can view admin stats | `get_current_user` + role check in `GET /admin/stats` |
 | Rental history is preserved when a bike/user is deleted | `ondelete="SET NULL"` on FK columns |
 | Pricing is calculated as `minutes × base_rate` (min 0) | `PricingService.calculate_cost()` |
-
----
-
-*Course: Advanced Programming with Python — IE University MCSBT, Term 2 FEB-2026*
-*Professor: David Estivariz Pierola*
