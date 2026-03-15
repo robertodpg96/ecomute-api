@@ -1,6 +1,5 @@
 import pytest
-from src.app.routers import bike
-from src.app.models.bikes import BikeCreate, BikeResponse
+from src.app.models.bikes import BikeCreate
 from src.app.data.models import Bike
 
 @pytest.mark.asyncio
@@ -18,7 +17,6 @@ async def test_get_bikes(async_client, test_db_session):
     assert len(data) == 1
     assert data[0]["model"] == "TestBike"
 
-@pytest.mark.asyncio
 async def insert_bike(async_client, bike_data: dict) -> dict:
     response = await async_client.post("/bikes/", json=bike_data)
     assert response.status_code == 201
@@ -70,8 +68,7 @@ async def test_wrong_bike(async_client, test_db_session):
 async def test_add_bike_ok(async_client, test_db_session):
     # 1. Arrange
     bike = BikeCreate(model="TestBike", battery=80, status="available")
-    bikeResponse = BikeResponse(model="TestBike", battery=80, status="available", id=1)
-    
+
     # 2. Act
     response = await async_client.post("/bikes/", json=bike.model_dump())
 

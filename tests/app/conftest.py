@@ -1,0 +1,105 @@
+import pytest
+from httpx import AsyncClient, ASGITransport
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from src.app.data.database import Base, get_db
+from src.app.data.models import User
+from src.app.security.security import get_password_hash
+from src.app.main import app
+
+# 1. Use an in-memory DB for tests (Fast & Clean)
+TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
+
+@pytest.fixture
+async def test_db_session():
+    """
+    Creates a fresh database for every single test function.
+    """
+    # Create Engine
+    engine = create_async_engine(TEST_DB_URL, echo=False)
+    
+    # Create Tables
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    
+    # Create Session Factory
+    SessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+    
+    async with SessionLocal() as session:
+        yield session
+    
+    # Cleanup (Drop tables)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+
+@pytest.fixture
+async def async_client(test_db_session):
+    """
+    A fake browser (HTTP Client) that calls our API.
+    It overrides the 'get_db' dependency to use our TEST DB instead of the real one.
+    """
+    
+    # Dependency Override: Force app to use test_db_session
+    async def override_get_db():
+        yield test_db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    
+    # Create the Async Client
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
+    
+    # Cleanup overrides
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def test_user(test_db_session):
+    """Creates a regular rider user in the test database."""
+    user = User(
+        username="testuser",
+        email="testuser@test.com",
+        hashed_password=get_password_hash("password123"),
+        role="rider",
+    )
+    test_db_session.add(user)
+    await test_db_session.commit()
+    await test_db_session.refresh(user)
+    return user
+
+
+@pytest.fixture
+async def test_admin(test_db_session):
+    """Creates an admin user in the test database."""
+    admin = User(
+        username="adminuser",
+        email="admin@test.com",
+        hashed_password=get_password_hash("password123"),
+        role="admin",
+    )
+    test_db_session.add(admin)
+    await test_db_session.commit()
+    await test_db_session.refresh(admin)
+    return admin
+
+
+@pytest.fixture
+async def auth_client(async_client, test_user):
+    """An HTTP client authenticated as a regular rider user."""
+    response = await async_client.post(
+        "/token", data={"username": test_user.username, "password": "password123"}
+    )
+    token = response.json()["access_token"]
+    async_client.headers["Authorization"] = f"Bearer {token}"
+    return async_client
+
+
+@pytest.fixture
+async def admin_client(async_client, test_admin):
+    """An HTTP client authenticated as an admin user."""
+    response = await async_client.post(
+        "/token", data={"username": test_admin.username, "password": "password123"}
+    )
+    token = response.json()["access_token"]
+    async_client.headers["Authorization"] = f"Bearer {token}"
+    return async_client
