@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from src.app.routers import rentals, user, bike, admin, auth, stations
+from src.app.routers import rentals, user, bike, admin, auth, stations, predictions
 from src.app.data.database import Base, engine
 
 
@@ -25,3 +25,4 @@ app.include_router(user.router)
 app.include_router(admin.router)
 app.include_router(auth.router)
 app.include_router(stations.router)
+app.include_router(predictions.router)
