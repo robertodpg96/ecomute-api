@@ -1,6 +1,6 @@
 # EcoMute API
 
-A production-style electric bike rental REST API built incrementally across 5 phases, each introducing a new layer of the stack — from data validation to persistence, security, and automated testing.
+A production-style electric bike rental REST API built incrementally across 6 phases, each introducing a new layer of the stack — from data validation to persistence, security, automated testing, ML prediction, and an interactive frontend.
 
 ---
 
@@ -12,6 +12,7 @@ A production-style electric bike rental REST API built incrementally across 5 ph
 - [Development Phases](#development-phases)
 - [Setup & Installation](#setup--installation)
 - [Running the API](#running-the-api)
+- [Running the Frontend](#running-the-frontend)
 - [API Endpoints](#api-endpoints)
 - [Authentication Flow](#authentication-flow)
 - [Running Tests](#running-tests)
@@ -21,7 +22,7 @@ A production-style electric bike rental REST API built incrementally across 5 ph
 
 ## Project Overview
 
-EcoMute is an e-bike sharing platform API. Users can register, log in, and rent available bikes. Admins can manage stations and view system stats. The system enforces real-world constraints such as minimum battery levels for rentals and role-based access control.
+EcoMute is an e-bike sharing platform API. Users can register, log in, and rent available bikes. Admins can manage stations and view system stats. The system enforces real-world constraints such as minimum battery levels for rentals and role-based access control. A machine learning model predicts trip duration based on distance and battery level, exposed via a REST endpoint and an interactive Streamlit dashboard.
 
 ---
 
@@ -36,17 +37,24 @@ EcoMute is an e-bike sharing platform API. Users can register, log in, and rent 
 | Password Hashing | passlib + bcrypt |
 | Testing | pytest + pytest-asyncio + httpx |
 | Server | Uvicorn |
+| ML | scikit-learn (LinearRegression) + joblib + pandas |
+| Frontend | Streamlit |
 
 ---
 
 ## Project Structure
 
 ```
-lab7/
+lab8/
 ├── src/
 │   ├── dependencies.py               # get_current_user dependency
+│   ├── frontend/
+│   │   └── app.py                    # Streamlit dashboard (Trip Planner UI)
+│   ├── ml/
+│   │   ├── train.py                  # Generates synthetic data & trains LinearRegression model
+│   │   └── trip_predictor.joblib     # Serialized trained model
 │   └── app/
-│       ├── main.py                   # FastAPI app + lifespan startup
+│       ├── main.py                   # FastAPI app + lifespan startup + all routers
 │       ├── data/
 │       │   ├── database.py           # Async engine, session, get_db
 │       │   ├── models/
@@ -57,14 +65,16 @@ lab7/
 │       ├── models/                   # Pydantic schemas (public API interface)
 │       │   ├── bikes.py              # BikeCreate, BikeResponse
 │       │   ├── rentals.py            # RentalProcessing, RentalResponse, RentalOutcome
-│       │   └── user.py               # UserCreate, UserSignUp, UserResponse
+│       │   ├── user.py               # UserCreate, UserSignUp, UserResponse
+│       │   └── trip.py               # TripInput (distance_km, battery_level)
 │       ├── routers/
 │       │   ├── auth.py               # POST /token (OAuth2 login)
 │       │   ├── bike.py               # CRUD /bikes
 │       │   ├── rentals.py            # POST /rentals (authenticated)
 │       │   ├── user.py               # CRUD /users
 │       │   ├── admin.py              # GET /admin/stats (admin only)
-│       │   └── stations.py           # POST /stations (admin only)
+│       │   ├── stations.py           # POST /stations (admin only)
+│       │   └── predictions.py        # POST /predict (ML trip duration)
 │       ├── security/
 │       │   └── security.py           # Password hashing + JWT creation
 │       └── services/
@@ -169,13 +179,36 @@ lab7/
 
 ---
 
+### Phase 6 — ML Prediction & Streamlit Frontend
+
+**Goal:** Integrate a machine learning model to predict trip duration and expose it through a REST endpoint and an interactive UI.
+
+- Created `src/ml/train.py`:
+  - Generates 1,000 synthetic samples (`distance_km` 1–20, `battery_level` 10–100)
+  - Trip duration formula: `minutes = 3 × distance + (100 − battery) × 0.05 + noise`
+  - Trains a `LinearRegression` model with scikit-learn
+  - Serializes the model to `src/ml/trip_predictor.joblib` using joblib
+- Created `src/app/models/trip.py`:
+  - `TripInput` Pydantic model with `distance_km: float` and `battery_level: float`
+  - Used by FastAPI for automatic request body validation
+- Created `src/app/routers/predictions.py`:
+  - `POST /predict` — accepts a `TripInput` body, runs inference with the loaded model, returns `distance_km` and `estimated_minutes`
+  - Returns `500` if the model file is not found
+- Registered `predictions.router` in `src/app/main.py`
+- Created `src/frontend/app.py` (Streamlit):
+  - Sliders for **Distance (km)** and **Battery Level (%)**
+  - "Predict Trip Duration" button sends `POST /predict` to the FastAPI backend
+  - Displays `estimated_minutes` as a metric on success
+
+---
+
 ## Setup & Installation
 
 **Prerequisites:** Python 3.12+
 
 ```bash
 # 1. Clone / navigate to the project
-cd "lab7"
+cd "lab8"
 
 # 2. Create and activate a virtual environment
 python -m venv .venv
@@ -184,6 +217,9 @@ source .venv/bin/activate       # macOS/Linux
 
 # 3. Install dependencies
 pip install -r requirements.txt
+
+# 4. Train the ML model (only needed once)
+python src/ml/train.py
 ```
 
 ---
@@ -199,6 +235,18 @@ The database file `ecomute.db` is created automatically on first startup.
 Interactive docs are available at:
 - Swagger UI: `http://127.0.0.1:8000/docs`
 - ReDoc: `http://127.0.0.1:8000/redoc`
+
+---
+
+## Running the Frontend
+
+With the API running, open a second terminal and run:
+
+```bash
+streamlit run src/frontend/app.py
+```
+
+The Streamlit dashboard opens at `http://localhost:8501`. Use the sliders to set distance and battery level, then click **Predict Trip Duration** to get an ML-based estimate.
 
 ---
 
@@ -237,6 +285,20 @@ Interactive docs are available at:
 |--------|------|-------------|------|
 | GET | `/admin/stats` | View admin statistics | Bearer token (admin role) |
 | POST | `/stations/` | Create a station | Bearer token (admin role) |
+
+### ML Prediction
+| Method | Path | Description | Auth |
+|--------|------|-------------|------|
+| POST | `/predict` | Predict trip duration from distance & battery | None |
+
+**Request body:**
+```json
+{ "distance_km": 10.0, "battery_level": 80.0 }
+```
+**Response:**
+```json
+{ "distance_km": 10.0, "estimated_minutes": 31.1 }
+```
 
 ---
 
@@ -287,3 +349,4 @@ pytest test/app/services/test_api.py
 | Only `admin` users can view admin stats | `get_current_user` + role check in `GET /admin/stats` |
 | Rental history is preserved when a bike/user is deleted | `ondelete="SET NULL"` on FK columns |
 | Pricing is calculated as `minutes × base_rate` (min 0) | `PricingService.calculate_cost()` |
+| Trip duration prediction requires valid `distance_km` and `battery_level` | `TripInput` Pydantic model on `POST /predict` |
